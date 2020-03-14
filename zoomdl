@@ -1,0 +1,136 @@
+#!/usr/bin/env python3
+
+import json
+import os
+import argparse
+import requests
+import pandas
+
+def make_months(start_date, end_date):
+    month_starts = pandas.date_range(
+        start=start_date,
+        end=end_date,
+        freq='MS'
+    ).strftime('%Y-%m-%d').tolist()
+
+    month_ends = pandas.date_range(
+        start=start_date,
+        end=end_date,
+        freq='M'
+    ).strftime('%Y-%m-%d').tolist()
+
+    months = zip(month_starts, month_ends)
+
+    return months
+
+def make_headers(token):
+    return {
+        "Authorization": f"Bearer {token}",
+        "User-Agent": "Zoom-api-Jwt-Request",
+        "content-type": "application/json"
+    }
+
+def get_meetings_in_month(headers, meetings, month_start, month_end, tok=None):
+    params = {
+        'from': month_start,
+        'to': month_end,
+    }
+
+    print('params', params, 'next_tok', tok)
+    if tok:
+        params['next_page_token'] = tok
+
+    result = requests.get(
+        f'https://api.zoom.us/v2/accounts/me/recordings',
+        headers=headers,
+        params=params
+    )
+
+    output = result.json()
+    #print(json.dumps(output))
+    meetings.extend(output['meetings'])
+
+    num_recs = len(output['meetings'])
+    print(f'got {num_recs} recorded meetings')
+
+    total_meetings = len(meetings)
+    print(f'found {total_meetings} recorded meetings')
+
+    next_tok = output['next_page_token']
+    if next_tok != '':
+        get_meetings_in_month(headers, meetings, month_start, month_end, next_tok)
+
+def get_meetings(headers, months):
+    meetings = []
+
+    # If we've already done the work, just load the file
+    if os.path.exists('meetings.json'):
+        with open('meetings.json') as meetings_file:
+            for line in meetings_file:
+                meetings.append(json.loads(line))
+
+    else:
+        for month in months:
+            print(f'Getting meetings for {month}')
+            get_meetings_in_month(headers, meetings, month_start=month[0], month_end=month[1])
+
+        with open('meetings.json', 'w') as meetings_file:
+            for meeting in meetings:
+                meetings_file.write(json.dumps(meeting) + '\n')
+
+    return meetings
+
+def get_recordings(recordings):
+    for recording in recordings:
+        recording_id = str(recording['id'])
+        file_name = recording_id + "." + recording['file_type']
+        file_path = os.path.join('recordings', file_name)
+
+        if os.path.exists(file_path):
+            print(f'already have {file_path}')
+            continue
+
+        print(f'downloading {file_path}')
+
+        result = requests.get(recording['download_url'])
+
+        with open(file_path, 'wb') as raw:
+            raw.write(result.content)
+
+def process_meetings(meetings):
+    if not os.path.exists('recordings'):
+        os.mkdir('recordings')
+
+    for meeting in meetings:
+        recordings = meeting['recording_files']
+        get_recordings(recordings)
+
+def main(args):
+    headers = make_headers(args.token)
+    months = make_months(args.start, args.end)
+
+    meetings = get_meetings(headers, months)
+    process_meetings(meetings)
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description='Backs up Zoom cloud recordings')
+    parser.add_argument(
+        '--token',
+        metavar='YOUR_JWT',
+        required=True,
+        help='the JWT you generate from your Zoom app'
+    )
+    parser.add_argument(
+        '--start',
+        metavar='YYYY-MM-DD',
+        required=True,
+        help='first of month to start gathering recording meetings'
+    )
+    parser.add_argument(
+        '--end',
+        metavar='YYYY-MM-DD',
+        required=True,
+        help='first of month to end gathering recording meetings'
+    )
+    args = parser.parse_args()
+    main(args)
