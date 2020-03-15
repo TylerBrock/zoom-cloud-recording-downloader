@@ -4,9 +4,11 @@ import json
 import os
 import argparse
 import requests
-import pandas
+import pandas # this is a heavy dependency but I date ranges to be easy
 
+# Zoom only allows specifying a range of 1 month max in recordings queries
 def make_months(start_date, end_date):
+    # The api docs say you can only go back 6 months but that isn't true
     month_starts = pandas.date_range(
         start=start_date,
         end=end_date,
@@ -36,7 +38,6 @@ def get_meetings_in_month(headers, meetings, month_start, month_end, tok=None):
         'to': month_end,
     }
 
-    print('params', params, 'next_tok', tok)
     if tok:
         params['next_page_token'] = tok
 
@@ -46,15 +47,17 @@ def get_meetings_in_month(headers, meetings, month_start, month_end, tok=None):
         params=params
     )
 
+    # token could be bad or expired, throw
+    result.raise_for_status()
+
     output = result.json()
-    #print(json.dumps(output))
     meetings.extend(output['meetings'])
 
     num_recs = len(output['meetings'])
     print(f'got {num_recs} recorded meetings')
 
     total_meetings = len(meetings)
-    print(f'found {total_meetings} recorded meetings')
+    print(f'found {total_meetings} recorded meetings so far...')
 
     next_tok = output['next_page_token']
     if next_tok != '':
@@ -72,8 +75,14 @@ def get_meetings(headers, months):
     else:
         for month in months:
             print(f'Getting meetings for {month}')
-            get_meetings_in_month(headers, meetings, month_start=month[0], month_end=month[1])
+            get_meetings_in_month(
+                headers,
+                meetings,
+                month_start=month[0],
+                month_end=month[1]
+            )
 
+        # This file will serve as our manifest, keep it with the recordings
         with open('meetings.json', 'w') as meetings_file:
             for meeting in meetings:
                 meetings_file.write(json.dumps(meeting) + '\n')
@@ -81,11 +90,14 @@ def get_meetings(headers, months):
     return meetings
 
 def get_recordings(recordings):
+    # Each meeting can have multiple recordings (chat, audio, video) and
+    # if meetings are long enough you can have multiple video segments
     for recording in recordings:
         recording_id = str(recording['id'])
         file_name = recording_id + "." + recording['file_type']
         file_path = os.path.join('recordings', file_name)
 
+        # Allows us to resume work in case we get interrupted
         if os.path.exists(file_path):
             print(f'already have {file_path}')
             continue
@@ -111,6 +123,7 @@ def main(args):
 
     meetings = get_meetings(headers, months)
     process_meetings(meetings)
+    print('done!')
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Backs up Zoom cloud recordings')
