@@ -4,7 +4,7 @@ Downloads Zoom cloud recordings to disk so you can archive them
 ### Usage
 
 ```
-usage: zoomdl [-h] --token YOUR_JWT --start YYYY-MM-DD --end YYYY-MM-DD
+usage: zoomdl [-h] --token YOUR_JWT --start YYYY-MM-DD --end YYYY-MM-DD [--delete]
 
 Backs up Zoom cloud recordings
 
@@ -13,6 +13,8 @@ optional arguments:
   --token YOUR_JWT    the JWT you generate from your Zoom app
   --start YYYY-MM-DD  first of month to start gathering recording meetings
   --end YYYY-MM-DD    first of month to end gathering recording meetings
+  --delete            delete recordings after downloading them
+
 ```
 
 
