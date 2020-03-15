@@ -109,7 +109,22 @@ def get_recordings(recordings):
         with open(file_path, 'wb') as raw:
             raw.write(result.content)
 
-def process_meetings(meetings):
+def delete_recordings(recordings, headers):
+    # This could take meetings and delete them wholesale but it
+    # seems like a good check to delete them from the manifest
+    # individually so we make sure the download was complete.
+    for recording in recordings:
+        meeting_id = recording['meeting_id']
+        recording_id = recording['id']
+        print(f'deleting {meeting_id} :: {recording_id}')
+
+        result = requests.delete(
+            f'https://api.zoom.us/v2/meetings/{meeting_id}/recordings/{recording_id}',
+            headers=headers,
+        )
+
+
+def process_meetings(headers, meetings, delete):
     if not os.path.exists('recordings'):
         os.mkdir('recordings')
 
@@ -117,12 +132,16 @@ def process_meetings(meetings):
         recordings = meeting['recording_files']
         get_recordings(recordings)
 
+        if delete:
+            delete_recordings(recordings, headers)
+
 def main(args):
     headers = make_headers(args.token)
     months = make_months(args.start, args.end)
 
     meetings = get_meetings(headers, months)
-    process_meetings(meetings)
+    process_meetings(headers, meetings, args.delete)
+
     print('done!')
 
 if __name__ == "__main__":
@@ -144,6 +163,11 @@ if __name__ == "__main__":
         metavar='YYYY-MM-DD',
         required=True,
         help='first of month to end gathering recording meetings'
+    )
+    parser.add_argument(
+        '--delete',
+        action='store_true',
+        help='delete recordings after downloading them'
     )
     args = parser.parse_args()
     main(args)
