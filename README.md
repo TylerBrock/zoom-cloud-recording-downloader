@@ -1,6 +1,10 @@
 # zoom-cloud-recording-downloader
 Downloads Zoom cloud recordings to disk so you can archive them
 
+This repo contains hastily written python not meant for production use.
+
+I wrote this to solve a problem not to launch a space shuttle. Instead of deleting it I'm putting it here.
+
 ### Usage
 
 ```
