@@ -14,7 +14,6 @@ optional arguments:
   --start YYYY-MM-DD  first of month to start gathering recording meetings
   --end YYYY-MM-DD    first of month to end gathering recording meetings
   --delete            delete recordings after downloading them
-
 ```
 
 
