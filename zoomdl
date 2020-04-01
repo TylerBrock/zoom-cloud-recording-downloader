@@ -4,24 +4,32 @@ import json
 import os
 import argparse
 import requests
-import pandas # this is a heavy dependency but I date ranges to be easy
+import datetime
 
 # Zoom only allows specifying a range of 1 month max in recordings queries
 def make_months(start_date, end_date):
     # The api docs say you can only go back 6 months but that isn't true
-    month_starts = pandas.date_range(
-        start=start_date,
-        end=end_date,
-        freq='MS'
-    ).strftime('%Y-%m-%d').tolist()
+    dt_format = '%Y-%m-%d'
+    dt_start = datetime.datetime.strptime(start_date, dt_format)
+    dt_end = datetime.datetime.strptime(end_date, dt_format)
+    one_day = datetime.timedelta(1)
 
-    month_ends = pandas.date_range(
-        start=start_date,
-        end=end_date,
-        freq='M'
-    ).strftime('%Y-%m-%d').tolist()
+    start_dates = [dt_start.strftime(dt_format)]
+    end_dates = []
+    today = dt_start
 
-    months = zip(month_starts, month_ends)
+    while today <= dt_end:
+        tomorrow = today + one_day
+
+        if tomorrow.month != today.month:
+            start_dates.append(tomorrow.strftime(dt_format))
+            end_dates.append(today.strftime(dt_format))
+
+        today = tomorrow
+
+    end_dates.append(dt_end.strftime(dt_format))
+
+    months = zip(start_dates,end_dates)
 
     return months
 
