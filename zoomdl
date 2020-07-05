@@ -112,10 +112,14 @@ def get_recordings(recordings):
 
         print(f'downloading {file_path}')
 
-        result = requests.get(recording['download_url'])
+        result = requests.get(recording['download_url'], stream=True)
 
         with open(file_path, 'wb') as raw:
-            raw.write(result.content)
+            for chunk in result.iter_content(1024):
+                if not chunk:
+                    break
+
+                raw.write(chunk)
 
 def delete_recordings(recordings, headers):
     # This could take meetings and delete them wholesale but it
