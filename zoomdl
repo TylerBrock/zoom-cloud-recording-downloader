@@ -136,7 +136,19 @@ def process_meetings(headers, meetings, delete):
             delete_recordings(recordings, headers)
 
 def main(args):
-    headers = make_headers(args.token)
+
+    if 'ZOOM_JWT_TOKEN' in os.environ:
+        token = os.getenv('ZOOM_JWT_TOKEN')
+    elif args.token and os.path.exists(args.token):
+        with open (args.token, 'r') as token_file:
+            token = token_file.read().replace('\n', '')
+    else:
+        token = args.token
+
+    if not token:
+        exit('error: missing JWT token')
+
+    headers = make_headers(token)
     months = make_months(args.start, args.end)
 
     meetings = get_meetings(headers, months)
@@ -146,12 +158,6 @@ def main(args):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Backs up Zoom cloud recordings')
-    parser.add_argument(
-        '--token',
-        metavar='YOUR_JWT',
-        required=True,
-        help='the JWT you generate from your Zoom app'
-    )
     parser.add_argument(
         '--start',
         metavar='YYYY-MM-DD',
@@ -163,6 +169,12 @@ if __name__ == "__main__":
         metavar='YYYY-MM-DD',
         required=True,
         help='first of month to end gathering recording meetings'
+    )
+    parser.add_argument(
+        '--token',
+        metavar='YOUR_JWT',
+        required=False,
+        help='the JWT you generate from your Zoom app, also can use env variable ZOOM_JWT_TOKEN or file path where token is placed'
     )
     parser.add_argument(
         '--delete',
