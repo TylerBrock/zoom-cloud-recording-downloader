@@ -5,6 +5,12 @@ This repo contains hastily written python not meant for production use.
 
 I wrote this to solve a problem not to launch a space shuttle. Instead of deleting it I'm putting it here.
 
+### Installaion
+
+```sh
+$ pip install -r requirements.txt
+```
+
 ### Usage
 
 ```
